@@ -1,10 +1,13 @@
 from argon2.exceptions import VerifyMismatchError
-from fastapi import APIRouter, HTTPException
-from app.core.dependencies import DatabaseSession
-from app.core.security import hash_password, verify_password, create_access_token
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, HTTPException, status
+
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from sqlalchemy.exc import IntegrityError
+from uuid import UUID
 
 from app.models import Business, BusinessCategory
+from app.core.dependencies import DatabaseSession, AuthenticatedBusiness
+from app.core.security import hash_password, verify_password, create_access_token
 
 
 class LoginSchema(BaseModel):
@@ -13,13 +16,35 @@ class LoginSchema(BaseModel):
 
 class RegisterSchema(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=128)
     business_name: str
     registration_number: str
     phone: str
     address: str
     category: BusinessCategory
 
+class BusinessSchema(BaseModel):
+    id: UUID
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+class RegisterResponse(BaseModel):
+    user: BusinessSchema
+    access_token: str
+    token_type: str
+
+class FullBusinessSchema(BaseModel):
+    id: UUID
+    name: str
+    email: EmailStr
+    phone: str
+    address: str
+    registration_number: str
+    category: str
+
+
+    model_config = ConfigDict(from_attributes=True)
 auth_routes = APIRouter()
 
 @auth_routes.post("/auth/login")
@@ -31,7 +56,7 @@ async def login(db: DatabaseSession, credentials: LoginSchema):
 
     if not business:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
 
@@ -42,7 +67,7 @@ async def login(db: DatabaseSession, credentials: LoginSchema):
         )
     except VerifyMismatchError:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
 
@@ -55,16 +80,19 @@ async def login(db: DatabaseSession, credentials: LoginSchema):
         "token_type": "bearer"
     }
 
-@auth_routes.post("/auth/register")
+@auth_routes.post(
+    "/auth/register",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_201_CREATED)
 async def register(db: DatabaseSession, credentials: RegisterSchema):
     business = db.query(Business).filter(Business.email == credentials.email).first()
     if business:
         raise HTTPException(
-            status_code=401,
-            detail="Business already exists with this email"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered"
         )
 
-    business = Business(
+    new_business = Business(
         name=credentials.business_name,
         hashed_password=hash_password(credentials.password),
         category=credentials.category,
@@ -73,11 +101,26 @@ async def register(db: DatabaseSession, credentials: RegisterSchema):
         email=credentials.email,
         registration_number=credentials.registration_number
     )
-    db.add(business)
-    db.commit()
+    db.add(new_business)
+    try:
+        db.commit()
+        db.refresh(new_business)
 
-    return {"status": "Registered"}
+    except IntegrityError:
+        db.rollback()
 
-@auth_routes.get("/me")
-def me():
-    pass
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered"
+        )
+
+    access_token = create_access_token({
+        "sub": str(new_business.id)
+    })
+
+    return {
+        "user": new_business,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
