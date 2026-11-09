@@ -124,3 +124,6 @@ async def register(db: DatabaseSession, credentials: RegisterSchema):
         "token_type": "bearer"
     }
 
+@auth_routes.get("/me", response_model=FullBusinessSchema, status_code=status.HTTP_200_OK)
+def me(current_user: AuthenticatedBusiness):
+    return current_user
