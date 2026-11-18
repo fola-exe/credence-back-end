@@ -1,4 +1,4 @@
-from sqlalchemy import func, DateTime, Uuid
+from sqlalchemy import func, DateTime, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column, declared_attr
 from datetime import datetime
 import uuid
@@ -9,7 +9,8 @@ class BaseMixin:
         return mapped_column(
             Uuid,
             primary_key=True,
-            default=uuid.uuid4
+            default=uuid.uuid4,
+            server_default=text("gen_random_uuid()")
         )
 
     @declared_attr

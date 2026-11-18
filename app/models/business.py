@@ -1,4 +1,4 @@
-from sqlalchemy import String, Enum as SQLEnum
+from sqlalchemy import BigInteger, String, Text, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 from app.models.mixins import BaseMixin
@@ -33,4 +33,6 @@ class Business(Base, BaseMixin):
     phone: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     registration_number: Mapped[str] = mapped_column(String(20))
+    credit_limit_kobo: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 

@@ -1,7 +1,8 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from app.core.errors import Unauthorized
 from app.core.security import verify_access_token, oauth2_scheme
 from app.core.database import get_db
 from app.models import Business
@@ -17,18 +18,17 @@ def get_current_business(
     business_id = verify_access_token(token)
 
     if business_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"}
+        raise Unauthorized(
+            "Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
         business_id = UUID(business_id)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token subject"
+        raise Unauthorized(
+            "Invalid token subject",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     business = db.query(Business).filter(
@@ -36,9 +36,9 @@ def get_current_business(
     ).first()
 
     if business is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+        raise Unauthorized(
+            "Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return business

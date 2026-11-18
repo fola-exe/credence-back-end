@@ -1,5 +1,5 @@
-from argon2.exceptions import VerifyMismatchError
-from fastapi import APIRouter, HTTPException, status
+from argon2.exceptions import VerificationError, VerifyMismatchError
+from fastapi import APIRouter, Request, status
 
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
@@ -7,6 +7,8 @@ from uuid import UUID
 
 from app.models import Business, BusinessCategory
 from app.core.dependencies import DatabaseSession, AuthenticatedBusiness
+from app.core.errors import Conflict, Unauthorized
+from app.core.rate_limit import limiter
 from app.core.security import hash_password, verify_password, create_access_token
 
 
@@ -48,28 +50,23 @@ class FullBusinessSchema(BaseModel):
 auth_routes = APIRouter()
 
 @auth_routes.post("/auth/login")
-async def login(db: DatabaseSession, credentials: LoginSchema):
+@limiter.limit("10/minute")
+async def login(request: Request, db: DatabaseSession, credentials: LoginSchema):
 
     business = db.query(Business).filter(
         Business.email == credentials.email
     ).first()
 
     if not business:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
+        raise Unauthorized("Invalid email or password")
 
     try:
         verify_password(
             credentials.password,
             business.hashed_password,
         )
-    except VerifyMismatchError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
+    except (VerifyMismatchError, VerificationError):
+        raise Unauthorized("Invalid email or password")
 
     access_token = create_access_token({
         "sub": str(business.id)
@@ -87,10 +84,7 @@ async def login(db: DatabaseSession, credentials: LoginSchema):
 async def register(db: DatabaseSession, credentials: RegisterSchema):
     business = db.query(Business).filter(Business.email == credentials.email).first()
     if business:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
-        )
+        raise Conflict("Email already registered")
 
     new_business = Business(
         name=credentials.business_name,
@@ -109,10 +103,7 @@ async def register(db: DatabaseSession, credentials: RegisterSchema):
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
-        )
+        raise Conflict("Email already registered")
 
     access_token = create_access_token({
         "sub": str(new_business.id)
