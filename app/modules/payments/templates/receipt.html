@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Receipt {{ payment.receipt_number }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px; color: #18212f; background: #f5f7fa;
+           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+    .sheet { max-width: 720px; margin: 0 auto; background: #fff; padding: 40px;
+             border: 1px solid #e4e8ee; border-radius: 10px; }
+    .top { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+    .mark { width: 48px; height: 48px; border-radius: 10px; background: #17324d; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .eyebrow { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #687386; }
+    h1 { font-size: 24px; margin: 6px 0 2px; }
+    .stamp { display: inline-block; padding: 8px 12px; border-radius: 999px; font-weight: 700;
+             font-size: 12px; letter-spacing: .08em; background: #e8f5ee; color: #176b43; }
+    .sandbox { background: #fff4d6; color: #8a5b00; margin-left: 8px; }
+    .parties { display: flex; gap: 32px; margin: 36px 0 24px; }
+    .party { flex: 1; }
+    .label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #687386; }
+    .value { font-size: 15px; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { text-align: left; padding: 10px 0; border-bottom: 1px solid #edf0f4; font-size: 14px; }
+    th { width: 42%; color: #687386; font-weight: 500; }
+    .hero { margin: 28px 0 8px; font-size: 34px; font-weight: 700; }
+    .caption { color: #687386; font-size: 12px; margin-top: 28px; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e4e8ee;
+              color: #687386; font-size: 12px; display: flex; justify-content: space-between; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .sheet { border: 0; padding: 0; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <div class="top">
+      <div>
+        <div class="mark">{{ business_initials }}</div>
+        <p class="eyebrow">Payment receipt</p>
+        <h1>{{ business.name }}</h1>
+        <div>{{ business.email }}</div>
+      </div>
+      <div>
+        <span class="stamp">{{ status_label }}</span>
+        {% if sandbox %}<span class="stamp sandbox">SANDBOX — test payment</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="parties">
+      <div class="party">
+        <div class="label">Paid by</div>
+        <div class="value">{{ debtor.name }}</div>
+      </div>
+      <div class="party">
+        <div class="label">Receipt number</div>
+        <div class="value">{{ payment.receipt_number }}</div>
+      </div>
+    </div>
+
+    <div class="hero">{{ amount_paid }}</div>
+    <div class="label">Amount paid this time</div>
+
+    <table>
+      <tr><th>Reference</th><td>{{ transaction.reference }}</td></tr>
+      <tr><th>Invoice number</th><td>{{ transaction.invoice_number or "—" }}</td></tr>
+      <tr><th>Description</th><td>{{ transaction.description }}</td></tr>
+      <tr><th>Date paid</th><td>{{ paid_at }}</td></tr>
+      <tr><th>Method</th><td>Kora</td></tr>
+      <tr><th>Kora reference</th><td>{{ payment.kora_reference }}</td></tr>
+      <tr><th>Original amount</th><td>{{ format_naira(transaction.amount_kobo) }}</td></tr>
+      <tr><th>Total paid to date</th><td>{{ total_paid }}</td></tr>
+      <tr><th>Balance remaining</th><td>{{ outstanding }}</td></tr>
+    </table>
+
+    <p class="caption">{{ balance_caption }}</p>
+
+    <div class="footer">
+      <span>Credence</span>
+      <span>Generated {{ generated_at }}</span>
+    </div>
+  </main>
+</body>
+</html>

@@ -93,7 +93,7 @@ def build_context(tx, balance, debtor, business, **extra) -> dict:
         "outstanding_balance": format_naira(balance.outstanding_kobo),
         "due_date": format_date_wat(tx.due_date),
         "days_overdue": str(max((today_wat() - tx.due_date).days, 0)),
-        "payment_link": f"{settings.app_url}/pay/{tx.public_token}",
+        "payment_link": f"{settings.user_facing_url}/pay/{tx.public_token}",
         "receipt_number": "",
         "receipt_link": "",
         "response_summary": "",

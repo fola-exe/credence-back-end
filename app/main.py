@@ -1,6 +1,7 @@
 import time
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,21 +12,33 @@ from app.core.config import settings
 from app.core.errors import AppError, error_envelope, validation_fields
 from app.core.logging import log_event, new_request_id, redact_public_token, setup_logging
 from app.core.rate_limit import limiter
+from app.core.startup import StartupConfigurationError, check_database, validate_startup
 from app.modules.auth.service import auth_routes
 from app.modules.businesses.router import business_routes
 from app.modules.capacity.router import capacity_routes
 from app.modules.debtors.router import debtor_routes
+from app.modules.payments.router import payment_routes
+from app.modules.public.router import public_routes
 from app.modules.transactions.router import transaction_routes
 
 setup_logging(settings.log_level)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    validate_startup()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.include_router(auth_routes)
 app.include_router(business_routes)
 app.include_router(debtor_routes)
 app.include_router(capacity_routes)
 app.include_router(transaction_routes)
+app.include_router(public_routes)
+app.include_router(payment_routes)
 
 app.add_middleware(
     CORSMiddleware,
@@ -183,3 +196,12 @@ async def handle_unexpected_error(request: Request, exc: Exception):
 @app.get("/health")
 def health():
     return {"status": "Working"}
+
+
+@app.get("/health/ready")
+def readiness():
+    try:
+        check_database()
+    except StartupConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"status": "Ready"}

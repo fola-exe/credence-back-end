@@ -173,10 +173,33 @@ class AmountOutOfRange(AppError):
     default_message = "The payment amount is outside the allowed range."
 
 
+class InvalidWebhookBody(AppError):
+    code = "VALIDATION_ERROR"
+    http_status = 400
+    default_message = "The webhook body is invalid."
+
+
 class WebhookSignatureInvalid(AppError):
     code = "WEBHOOK_SIGNATURE_INVALID"
     http_status = 401
     default_message = "The webhook signature is invalid."
+
+
+class WebhookVerificationFailed(AppError):
+    code = "WEBHOOK_VERIFICATION_FAILED"
+    http_status = 500
+    default_message = "Payment verification could not be completed."
+
+
+class UnsupportedFormat(AppError):
+    code = "UNSUPPORTED_FORMAT"
+    http_status = 400
+    default_message = "The requested format is not supported."
+
+
+class DemoModeDisabled(Conflict):
+    code = "DEMO_MODE_DISABLED"
+    default_message = "Demo charges are not enabled."
 
 
 class PaymentNotFound(NotFound):

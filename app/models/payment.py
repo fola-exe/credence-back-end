@@ -31,6 +31,9 @@ class Payment(Base, BaseMixin):
     )
     kora_reference: Mapped[str] = mapped_column(String(80), nullable=False)
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     amount_kobo: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[PaymentStatus] = mapped_column(
         SQLEnum(PaymentStatus, name="payment_status", values_callable=pg_values),
